@@ -1,6 +1,6 @@
 #### 一款简洁的能够快速使用ssh连接服务器的命令行工具
 
-![demo](/Users/xiaohuzi/code/go_ssh/screenshot/demo.gif)
+![demo](./screenshot/demo.gif)
 
 #### 安装：
 
