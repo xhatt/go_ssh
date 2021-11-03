@@ -6,18 +6,17 @@ import (
 	"github.com/manifoldco/promptui"
 	"os"
 	"strings"
-	"time"
 )
 
 const prev = "[↑] 返回上一页"
 
 var (
-	H                        = flag.Bool("help", false, "显示帮助信息")
-	S                        = flag.Bool("s", false, "载入ssh配置 config '~/.ssh/config'")
-	C                        = flag.String("c", configName, "服务器配置文件名")
-	configName               = "go_ssh.yaml"
-	keepalive  time.Duration = 60 // 心跳包发送间隔单位秒
-	logs                     = GetLogger()
+	H          = flag.Bool("help", false, "显示帮助信息")
+	S          = flag.Bool("s", false, "载入ssh配置 config '~/.ssh/config'")
+	C          = flag.String("c", configName, "服务器配置文件名")
+	configName = "go_ssh.yaml"
+	detailLen  = 12
+	logs       = GetLogger()
 
 	cursor int
 	keys   = &promptui.SelectKeys{
