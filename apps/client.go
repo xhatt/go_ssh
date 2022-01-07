@@ -47,7 +47,7 @@ type defaultClient struct {
 }
 
 func genSSHConfig(node *Node) *defaultClient {
-	fmt.Printf("ssh -p %d %s@%s\n", node.port(), node.user(), node.Host)
+	fmt.Printf("ssh %s@%s -p %d\n", node.user(), node.Host, node.port())
 	u, err := user.Current()
 	if err != nil {
 		l.Error(err)
@@ -60,10 +60,20 @@ func genSSHConfig(node *Node) *defaultClient {
 	if node.Key == "" {
 		pemBytes, err = ioutil.ReadFile(path.Join(u.HomeDir, ".ssh/id_rsa"))
 	} else {
-		pemBytes = []byte(node.Key)
+		if strings.HasPrefix(node.Key, "~") {
+			node.Key = path.Join(u.HomeDir, strings.Replace(node.Key, "~", "", 1))
+		}
+		_, err = os.Stat(node.Key)
+		if !os.IsNotExist(err) {
+			pemBytes, err = ioutil.ReadFile(node.Key)
+		} else {
+			pemBytes = []byte(node.Key)
+		}
 	}
 	if err != nil {
 		l.Error(err)
+		fmt.Println("未找到私钥文件或读取时失败")
+		os.Exit(1)
 	} else {
 		var signer ssh.Signer
 		if node.Passphrase != "" {
