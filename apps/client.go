@@ -218,7 +218,7 @@ func (c *defaultClient) Login() {
 		ssh.TTY_OP_ISPEED: 14400,
 		ssh.TTY_OP_OSPEED: 14400,
 	}
-	err = session.RequestPty("xterm", h, w, modes)
+	err = session.RequestPty("xterm-256color", h, w, modes)
 	if err != nil {
 		l.Error(err)
 		return
