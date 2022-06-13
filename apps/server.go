@@ -3,30 +3,17 @@ package apps
 import (
 	"flag"
 	"fmt"
-	"github.com/manifoldco/promptui"
+	"github.com/eiannone/keyboard"
 	"os"
 	"strings"
 )
-
-const prev = "[↑] 返回上一页"
 
 var (
 	H          = flag.Bool("help", false, "显示帮助信息")
 	S          = flag.Bool("s", false, "载入ssh配置 config '~/.ssh/config'")
 	C          = flag.String("c", configName, "服务器配置文件名")
 	configName = "go_ssh.yaml"
-	detailLen  = 12
 	logs       = GetLogger()
-
-	cursor int
-	keys   = &promptui.SelectKeys{
-		Prev:     promptui.Key{Code: promptui.KeyPrev, Display: promptui.KeyPrevDisplay},
-		Next:     promptui.Key{Code: promptui.KeyNext, Display: promptui.KeyNextDisplay},
-		PageUp:   promptui.Key{Code: promptui.KeyBackward, Display: promptui.KeyBackwardDisplay},
-		PageDown: promptui.Key{Code: promptui.KeyForward, Display: promptui.KeyForwardDisplay},
-		//Search:   promptui.Key{Code: readline.CharEsc, Display: "Esc"},
-		//Search:   promptui.Key{Code: promptui.KeyBackspace, Display: "Esc"},
-	}
 )
 
 func Run() {
@@ -62,7 +49,7 @@ func Run() {
 		fmt.Println("没有任何服务器")
 		os.Exit(0)
 	}
-	node := choose(nil, trees, 0)
+	node := choose1(trees, 0)
 	if node == nil {
 		return
 	}
@@ -109,84 +96,189 @@ func initLength(trees []*Node) {
 	}
 }
 
-func getTemplates() *promptui.SelectTemplates {
-	templates := &promptui.SelectTemplates{
-		Label:    "✨ {{ . | green}}",
-		Active:   "{{`➤ ` | yellow }}{{if .ID}}{{ .ID | yellow  }}{{`.`|yellow}} {{end}}{{if .ChildrenCount}}{{`[+] `| yellow  }}{{.Name | yellow}}{{` > `| yellow}}{{.ChildrenCount|yellow}}{{`个服务器`|yellow}}{{else}}{{ .Name | yellow  }}{{if .Host}}{{` > `|yellow}}{{if .User}}{{.User | yellow}}{{else}}{{`root` | yellow}}{{end}}{{`@` | yellow}}{{.Host | yellow}}{{end}}{{end}}",
-		Inactive: "  {{if .ID}}{{ .ID | faint  }}{{`.`|faint}} {{end}}{{if .ChildrenCount}}{{`[+] `| faint  }}{{.Name | faint}}{{` | `}}{{.ChildrenCount|faint}}{{`个服务器`|faint}}{{else}}{{ .Name | faint  }}{{if .Host}}{{` | `}}{{if .User}}{{.User | faint}}{{else}}{{`root` | faint}}{{end}}{{`@` | faint}}{{.Host | faint}}{{end}}{{end}}",
-		//Details: fmt.Sprintf("{{if .ID}}%s\n{{if not .ChildrenCount}}"+
-		//	"{{`%s`|faint}}{{ .Name | yellow}}\n{{`%s`|faint}}"+
-		//	"{{if .User}}{{.User | yellow}}\n{{else}}{{`root` | yellow}}\n"+
-		//	"{{end}}{{`%s`|faint}}{{ .Host | yellow}}\n{{`%s`|faint}}{{ .Method | yellow}}\n{{`%s`|faint}}{{ .Port | yellow}}"+
-		//	"{{else}}{{`%s` | faint}}{{ .Name|yellow}}\n{{range .Children}}    {{ .ID }}. {{.Name}}\n{{end}} {{end}}{{end}}",
-		//	FormatSeparator("详细信息", "-", detailLen+MaxLen),
-		//	AppendLeft("服务器名称:", " ", detailLen),
-		//	AppendLeft("用户名:", " ", detailLen),
-		//	AppendLeft("域名或IP:", " ", detailLen),
-		//	AppendLeft("鉴权方式:", " ", detailLen),
-		//	AppendLeft("端口:", " ", detailLen),
-		//	AppendLeft("分组名称:", " ", detailLen),
-		//),
+// getServers 将服务器信息打印出来
+func getServers(trees []*Node, i int) []string {
+	var content []string
+	for index, item := range trees {
+		if item == nil {
+			content = append(content, "\033[K")
+		} else if index == i {
+			content = append(content, item.Str(true))
+		} else {
+			content = append(content, item.Str(false))
+		}
 	}
-	return templates
+	return content
 }
 
-func choose(parent, trees []*Node, i int) *Node {
+type ServerInfo struct {
+	CurrentIndex  int
+	Nodes         []*Node
+	nodes         []*Node
+	SearchContent string
+	searchContent string
+	Length        int
+	height        int // 内容的高度
+}
 
+// HideCursor 隐藏光标
+func HideCursor() {
+	fmt.Printf("\033[?25l")
+}
+
+func (s *ServerInfo) getTips() []string {
+	// 根据搜索内容匹配服务器信息
+	if len(s.SearchContent) != 0 && s.searchContent != s.SearchContent {
+		var nodes []*Node
+		for _, node := range s.nodes {
+			if strings.Contains(node.Name, s.SearchContent) || strings.Contains(node.Host, s.SearchContent) || strings.Contains(node.User, s.SearchContent) {
+				nodes = append(nodes, node)
+			}
+		}
+
+		s.Length = len(nodes) - 1
+		q := len(s.nodes) - len(nodes)
+		for i := 0; i < q; i++ {
+			nodes = append(nodes, nil)
+		}
+		s.Nodes = nodes
+		s.CurrentIndex = 0
+	} else if len(s.SearchContent) == 0 && s.searchContent != s.SearchContent {
+		s.Nodes = s.nodes
+		s.CurrentIndex = 0
+		s.Length = len(s.Nodes) - 1
+
+	}
+	s.searchContent = s.SearchContent
+
+	return []string{fmt.Sprintf("输入任意内容搜索服务器：%s█\033[K", s.SearchContent), Green("✨ 请选择要连接的服务器：")}
+}
+
+func (s *ServerInfo) getContent() []string {
+	// 获取本次要打印的内容
+	var content []string
+	content = append(content, s.getTips()...)
+	content = append(content, getServers(s.Nodes, s.CurrentIndex)...)
+	return content
+}
+
+func (s *ServerInfo) Draw() {
+	content := s.getContent()
+	height := len(content)
+	if height > s.height {
+		s.height = height
+	}
+
+	for _, s := range content {
+		fmt.Println(s)
+	}
+	fmt.Printf("\033[%dA", s.height)
+}
+
+func NewServerInfo(trees []*Node, i int) *ServerInfo {
 	initLength(trees)
-	prompt := promptui.Select{
-		Label:        "请选择要连接的服务器：",
-		Items:        trees,
-		Templates:    getTemplates(),
-		Size:         10,
-		HideSelected: true,
-		Keys:         keys,
-		Searcher: func(input string, index int) bool {
-			node := trees[index]
-			input = strings.ToLower(input)
-			content := strings.ToLower(fmt.Sprintf("%s %s %s %s", node.ID, node.Name, node.User, node.Host))
-			if strings.Contains(input, " ") {
-				for _, key := range strings.Split(input, " ") {
-					key = strings.TrimSpace(key)
-					if key != "" {
-						if !strings.Contains(content, key) {
-							return false
-						}
-					}
-				}
-				return true
-			}
-			if strings.Contains(content, input) {
-				return true
-			}
-			return false
-		},
+	HideCursor()
+	return &ServerInfo{
+		Nodes:  trees,
+		nodes:  trees,
+		Length: len(trees) - 1,
 	}
-	index, _, err := prompt.RunCursorAt(i, 0)
+}
 
-	if err != nil {
-		return nil
-	}
-
-	node := trees[index]
-	if node.ID == "" {
-		// 选择了返回上层，删掉这个节点
-		if parent == nil {
-			return choose(nil, GetConfig(), 0)
-		}
-		_node := parent[cursor]
-		_node.Children = append(_node.Children[:index], _node.Children[index+1:]...)
-		return choose(nil, parent, cursor)
-	}
-	if len(node.Children) > 0 {
-		first := node.Children[0]
-		if first.Name != prev {
-			first = &Node{Name: prev}
-			node.Children = append(node.Children[:0], append([]*Node{first}, node.Children...)...)
-		}
-		cursor = index
-		return choose(trees, node.Children, 0)
-	}
+func choose1(trees []*Node, i int) *Node {
+	serverInfo := NewServerInfo(trees, i)
+	serverInfo.Draw()
+	// 绘制之后，开始监听键盘
+	node := serverInfo.HandleKeyboard()
 
 	return node
+}
+
+// HandleKeyboard 处理键盘事件
+func (s *ServerInfo) HandleKeyboard() *Node {
+	if err := keyboard.Open(); err != nil {
+		panic(err)
+	}
+	defer func() {
+		err := keyboard.Close()
+		if err != nil {
+			panic(err)
+		}
+	}()
+
+	keysEvents, err := keyboard.GetKeys(10)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		event := <-keysEvents
+		if event.Err != nil {
+			panic(event.Err)
+		}
+		if event.Rune != 0 {
+			s.handleChar(event.Rune)
+		} else if event.Key != 0 {
+			ret := s.handleKey(event.Key)
+			switch ret {
+			case 1:
+				return s.Nodes[s.CurrentIndex]
+			case 2:
+				return nil
+			}
+		}
+		s.Draw()
+	}
+}
+
+// 处理字母按键
+func (s *ServerInfo) handleChar(char rune) {
+	ch := strings.ToLower(string(char))
+	s.SearchContent += ch
+}
+
+func (s *ServerInfo) deleteSearchContent() {
+	if len(s.SearchContent) != 0 {
+		s.SearchContent = s.SearchContent[:len(s.SearchContent)-1]
+		s.Draw()
+	}
+}
+func (s *ServerInfo) clear() {
+	for i := 0; i <= s.height; i++ {
+		fmt.Println("\033[K")
+	}
+	fmt.Printf("\033[%dA", s.height)
+	ShowCursor()
+}
+
+func ShowCursor() {
+	fmt.Printf("\033[?25h")
+}
+
+// 处理键盘除字母键以外的按键
+func (s *ServerInfo) handleKey(key keyboard.Key) int {
+	switch key {
+	//case keyboard.KeyArrowRight, keyboard.KeyArrowLeft, keyboard.KeyArrowDown, keyboard.KeyArrowUp:
+	case keyboard.KeyArrowUp:
+		if s.CurrentIndex == 0 {
+			s.CurrentIndex = s.Length
+		} else {
+			s.CurrentIndex--
+		}
+	case keyboard.KeyArrowDown:
+		if s.CurrentIndex == s.Length {
+			s.CurrentIndex = 0
+		} else {
+			s.CurrentIndex++
+		}
+	case keyboard.KeyBackspace, keyboard.KeyBackspace2:
+		s.deleteSearchContent()
+	case keyboard.KeyEnter:
+		s.clear()
+		return 1
+	case keyboard.KeyCtrlC:
+		s.clear()
+		return 2
+	}
+	return 0
 }
