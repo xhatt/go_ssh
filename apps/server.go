@@ -99,14 +99,22 @@ func initLength(trees []*Node) {
 // getServers 将服务器信息打印出来
 func getServers(trees []*Node, i int) []string {
 	var content []string
+	noResult := true
 	for index, item := range trees {
 		if item == nil {
 			content = append(content, "\033[K")
 		} else if index == i {
+			noResult = false
 			content = append(content, item.Str(true))
 		} else {
+			noResult = false
 			content = append(content, item.Str(false))
 		}
+	}
+	if noResult && len(trees) != 0 {
+		// 说明搜索没搜到任何服务器
+		content[1] = "  🍵 未找匹配到数据\033[K"
+		//content = append(content[1:], "未找到任何服务器\033[K")
 	}
 	return content
 }
@@ -151,7 +159,7 @@ func (s *ServerInfo) getTips() []string {
 	}
 	s.searchContent = s.SearchContent
 
-	return []string{fmt.Sprintf("输入任意内容搜索服务器：%s█\033[K", s.SearchContent), Green("✨ 请选择要连接的服务器：")}
+	return []string{fmt.Sprintf("🔍 输入自动搜索：%s█\033[K", s.SearchContent), Green("✨ 请选择要连接的服务器：")}
 }
 
 func (s *ServerInfo) getContent() []string {
@@ -238,8 +246,10 @@ func (s *ServerInfo) handleChar(char rune) {
 }
 
 func (s *ServerInfo) deleteSearchContent() {
+	searchContent := []rune(s.SearchContent)
 	if len(s.SearchContent) != 0 {
-		s.SearchContent = s.SearchContent[:len(s.SearchContent)-1]
+		searchContent = searchContent[:len(searchContent)-1]
+		s.SearchContent = string(searchContent)
 		s.Draw()
 	}
 }

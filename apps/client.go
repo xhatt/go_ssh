@@ -280,7 +280,7 @@ func (c *defaultClient) Login() {
 	// send keepalive
 	go func() {
 		for {
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 30)
 			client.SendRequest("keepalive@openssh.com", false, nil)
 		}
 	}()
