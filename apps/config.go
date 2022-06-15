@@ -18,19 +18,17 @@ import (
 )
 
 type Node struct {
-	Name           string           `yaml:"name"`
-	Host           string           `yaml:"host"`
-	User           string           `yaml:"user"`
-	Port           int              `yaml:"port"`
-	Key            string           `yaml:"key"`
-	Passphrase     string           `yaml:"passphrase"`
-	Password       string           `yaml:"password"`
-	CallbackShells []*CallbackShell `yaml:"callback-shells"`
-	Children       []*Node          `yaml:"children"`
-	Jump           []*Node          `yaml:"jump"`
-	ID             string
-	ChildrenCount  int
-	Method         string // 鉴权方式
+	Name          string  `yaml:"name"`
+	Host          string  `yaml:"host"`
+	User          string  `yaml:"user"`
+	Port          int     `yaml:"port"`
+	Key           string  `yaml:"key"`
+	Passphrase    string  `yaml:"passphrase"`
+	Password      string  `yaml:"password"`
+	Jump          []*Node `yaml:"jump"`
+	ID            string
+	ChildrenCount int
+	Method        string // 鉴权方式
 }
 
 type CallbackShell struct {
@@ -79,11 +77,8 @@ func GetConfig() []*Node {
 func HandleNode(c []*Node) []*Node {
 	var temp []*Node
 	for _, item := range c {
-		if item.Host == "" && item.Children == nil {
+		if item.Host == "" {
 			// 说明是单个服务器，必须要host
-			continue
-		} else if item.Name == "" && item.Children != nil {
-			// 说明是分组，必须有名字
 			continue
 		}
 		temp = append(temp, item)
@@ -108,11 +103,6 @@ func HandleNode(c []*Node) []*Node {
 		}
 		if item.User == "" {
 			item.User = "root"
-		}
-		if item.Children != nil {
-			item.ChildrenCount = len(item.Children)
-			//item.Name = fmt.Sprintf("[+] %s", item.Name)
-			HandleNode(item.Children)
 		}
 	}
 	return temp
