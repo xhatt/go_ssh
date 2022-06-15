@@ -38,10 +38,6 @@ type CallbackShell struct {
 	Delay time.Duration `yaml:"delay"`
 }
 
-func (n *Node) String() string {
-	return n.Name
-}
-
 func (n *Node) host() string {
 	return strings.Replace(n.Host, " ", "", -1)
 }
@@ -120,6 +116,33 @@ func HandleNode(c []*Node) []*Node {
 		}
 	}
 	return temp
+}
+
+func ColorStr(s string, color int) string {
+	// 给字符串上色
+	return fmt.Sprintf("%s%dm%v%s", "\033[", color, s, fmt.Sprintf("%s%dm", "\033[", 0))
+}
+
+func Faint(s string) string {
+	return ColorStr(s, 2)
+}
+func Yellow(s string) string {
+	return ColorStr(s, 33)
+}
+
+func Green(s string) string {
+	return ColorStr(s, 32)
+}
+
+func (n *Node) Str(selected bool) string {
+	s := "   %s. %s %s %s@%s\033[K"
+
+	if selected {
+		s = Yellow(fmt.Sprintf(s, n.ID, n.Name, ">", n.User, n.Host))
+	} else {
+		s = Faint(fmt.Sprintf(s, n.ID, n.Name, "|", n.User, n.Host))
+	}
+	return s
 }
 
 func LoadConfig(configName string) error {
