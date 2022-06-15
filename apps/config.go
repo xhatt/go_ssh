@@ -38,10 +38,6 @@ type CallbackShell struct {
 	Delay time.Duration `yaml:"delay"`
 }
 
-func (n *Node) String() string {
-	return n.Name
-}
-
 func (n *Node) host() string {
 	return strings.Replace(n.Host, " ", "", -1)
 }
@@ -142,9 +138,9 @@ func (n *Node) Str(selected bool) string {
 	s := "   %s. %s %s %s@%s\033[K"
 
 	if selected {
-		s = Yellow(fmt.Sprintf(s, n.ID, n.Name, " | ", n.User, n.Host))
+		s = Yellow(fmt.Sprintf(s, n.ID, n.Name, ">", n.User, n.Host))
 	} else {
-		s = Faint(fmt.Sprintf(s, n.ID, n.Name, " > ", n.User, n.Host))
+		s = Faint(fmt.Sprintf(s, n.ID, n.Name, "|", n.User, n.Host))
 	}
 	return s
 }

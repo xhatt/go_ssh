@@ -241,7 +241,7 @@ func (s *ServerInfo) HandleKeyboard() *Node {
 
 // 处理字母按键
 func (s *ServerInfo) handleChar(char rune) {
-	ch := strings.ToLower(string(char))
+	ch := string(char)
 	s.SearchContent += ch
 }
 
@@ -254,7 +254,7 @@ func (s *ServerInfo) deleteSearchContent() {
 	}
 }
 func (s *ServerInfo) clear() {
-	for i := 0; i <= s.height; i++ {
+	for i := 0; i < s.height; i++ {
 		fmt.Println("\033[K")
 	}
 	fmt.Printf("\033[%dA", s.height)
