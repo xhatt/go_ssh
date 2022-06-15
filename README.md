@@ -1,20 +1,17 @@
 #### 一款简洁的能够快速使用ssh连接服务器的命令行工具
 
-**原因**：平时有时候需要使用ssh连接服务器，由于ssh不能保存密码，所以每次都需要手动输入密码，有的服务器又必须用密码链接无法使用秘钥，这时就需要复制密码-粘贴，然后连接，感觉特别的麻烦。于是自己开发了一个可以用于管理ssh密码并且快速连接的工具，采用开源的框架promptui，主要是为了简洁。 一开始采用tview准备开发带UI界面的，发现需求的功能其实很简单，有点儿杀鸡用牛刀的感觉，所以采用promptui。 差不多实现了我想要的需求：
+**原因**：平时有时候需要使用ssh连接服务器，由于ssh不能保存密码，所以每次都需要手动输入密码，有的服务器又必须用密码链接无法使用秘钥，这时就需要复制密码-粘贴，然后连接，感觉特别的麻烦。
+于是自己开发了一个可以用于管理ssh密码并且快速连接的工具，UI界面已于2.0版本纯自行手写
 
 1. 快速（命令行打开基本上2秒内可以找到想要的服务器，支持搜索）
 2. 不用复制粘贴密码了
 3. 保持心跳（不知道为什么我mac上面的ssh配置过一段时间就会被重置，导致ssh不会发送心跳和服务器断开连接）
 
-#### 已知问题：
+#### 更新日志：
 
-- 原生的promptui是不支持类似分组的功能的，所以内部的分组，其实是个假分组。这就导致了搜索功能只能搜当前页面的内容，其实promptui他只有一页。所以不能搜组内的内容。
-- 配置文件需要手动维护，稍微麻烦了点，之前有考虑过通过命令添加配置或者交互式的输入，但是仔细思考了一下还是没做，有几个原因：
-  - 命令加配置有学习成本，不可能每个人都能记得
-  - 用交互式输入的形式输入完需要回车确认，然后比如用户名输入错了，最后才发现，就得所有的重新输一遍，体验不好
-  - 我要写很多代码（🙄）
-  - `2022-01-27`关于维护配置文件的方式已经有了一个计划，待实施。
-- 大家要是有什么好的建议，可以提。
+- 2.0版
+  - 移除对promptui的依赖，因为后续想添加一键scp和端口转发功能，这个库自由度不够，所以2.0的UI界面是自己实现的
+  - 移除分组功能，因为已经支持了全局搜索，多一个分组感觉多此一举。
 
 ![demo](./screenshot/demo.gif)
 
@@ -28,50 +25,35 @@
 1. 首次执行命令会在文件所在的目录生成一个go_ssh.yaml的配置文件，启动时可以添加`-p`参数修改配置文件名，配置文件采用yaml格式编辑。内容如下：
 
    ```yaml
-   # 欢迎使用Go SSH 工具
-   # 字段说明
-   # name         ： 自定义的服务器名字 可不填
-   # user         ： 服务器名 不填默认 root
-   # host         ： 服务器域名或ip  ！！！必填！！！  不填的话，列表不会出现这条配置
-   # port         ： 端口号  不填默认 22
-   # password     ： 密码    不填默认用秘钥
-   # key          ： 私钥    不填默认  ~/.ssh/id_rsa
-   # passphrase   ： 私钥的密码  可不填
-   # children     ： 子服务器，可不填，如果填了，这个配置会变成一个分组
-   # jump         ： 跳板机 配置同上
-   
-   - { user: appuser, port: 22, password: 123456 }
-   - { name: dev server with key path, user: appuser, host: 192.168.8.35, port: 22}
-   - { name: dev server with passphrase key, user: appuser, host: 192.168.8.35, port: 22, passphrase: abcdefghijklmn}
-   - { name: dev server without port, user: appuser, host: 192.168.8.35 }
-   - { name: dev server without user, host: 192.168.8.35 }
-   - { name: dev server without password, host: 192.168.8.35 }
-   - { name: ⚡️ server with emoji name, host: 192.168.8.35 }
-   - name: server with jump
-     user: appuser
-     host: 192.168.8.35
-     port: 22
-     password: 123456
-     jump:
-     - user: appuser
-       host: 192.168.8.36
-       port: 2222
-   
-   
-   # server group 1
-   - name: server group 1
-     children:
-     - { name: server 1, user: root, host: 192.168.1.2 }
-     - { name: server 2, user: root, host: 192.168.1.3 }
-     - { name: server 3, user: root, host: 192.168.1.4 }
-   
-   # server group 2
-   - name: server group 2
-     children:
-     - { name: server 1, user: root, host: 192.168.2.2 }
-     - { name: server 2, user: root, host: 192.168.3.3 }
-     - { name: server 3, user: root, host: 192.168.4.4 }
-   
+    # 欢迎使用Go SSH 工具
+    # 字段说明
+    # name         ： 自定义的服务器名字 可不填
+    # user         ： 服务器名 不填默认 root
+    # host         ： 服务器域名或ip  ！！！必填！！！  不填的话，列表不会出现这条配置
+    # port         ： 端口号  不填默认 22
+    # password     ： 密码    不填默认用秘钥
+    # key          ： 私钥    不填默认  ~/.ssh/id_rsa
+    # passphrase   ： 私钥的密码  可不填
+    # keepalive    ： 心跳包发送间隔
+    # jump         ： 跳板机 配置同上
+
+
+    - { user: appuser, port: 22, password: 123456 }
+    - { name: 使用秘钥, user: appuser, host: 192.168.8.35, port: 22}
+    - { name: 使用带密码的秘钥, user: appuser, host: 192.168.8.35, port: 22, passphrase: abcdefghijklmn}
+    - { name: 不配置端口, user: appuser, host: 192.168.8.35 }
+    - { name: 不配置用户名, host: 192.168.8.35 }
+    - { name: 不设置密码, host: 192.168.8.35 }
+    - { name: ⚡️ 带emoji表情, host: 192.168.8.35 }
+    - name: 通过跳板机连接
+      user: appuser
+      host: 192.168.8.35
+      port: 22
+      password: 123456
+      jump:
+        - user: appuser
+          host: 192.168.8.36
+          port: 2222
    ```
 
 2. 根据自己的需求，编写配置文件。
@@ -83,7 +65,7 @@
 |     键位      |                            作用                            |
 | :-----------: | :--------------------------------------------------------: |
 |     ↑ / ↓     |                    控制光标向上/下移动                     |
-|     ← / →     |                   控制上下翻页，每页10条                   |
+|     ← / →     |                   控制上下翻页，每页10条（暂时移除）              |
 | a-z、A-Z、0-9 | 可直接在当前页面搜索服务器包含字段：序号、名字、用户名、IP |
 |    Ctrl+C     |                          退出程序                          |
 |     Enter     |                      连接选中的服务器                      |
