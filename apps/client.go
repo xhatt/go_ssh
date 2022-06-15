@@ -238,13 +238,6 @@ func (c *defaultClient) Login() {
 		return
 	}
 
-	// then callback
-	for i := range c.node.CallbackShells {
-		shell := c.node.CallbackShells[i]
-		time.Sleep(shell.Delay * time.Millisecond)
-		stdinPipe.Write([]byte(shell.Cmd + "\r"))
-	}
-
 	// change stdin to user
 	go func() {
 		_, err = io.Copy(stdinPipe, os.Stdin)

@@ -49,7 +49,7 @@ func Run() {
 		fmt.Println("没有任何服务器")
 		os.Exit(0)
 	}
-	node := choose1(trees, 0)
+	node := choose(trees)
 	if node == nil {
 		return
 	}
@@ -183,7 +183,7 @@ func (s *ServerInfo) Draw() {
 	fmt.Printf("\033[%dA", s.height)
 }
 
-func NewServerInfo(trees []*Node, i int) *ServerInfo {
+func NewServerInfo(trees []*Node) *ServerInfo {
 	initLength(trees)
 	HideCursor()
 	return &ServerInfo{
@@ -193,8 +193,8 @@ func NewServerInfo(trees []*Node, i int) *ServerInfo {
 	}
 }
 
-func choose1(trees []*Node, i int) *Node {
-	serverInfo := NewServerInfo(trees, i)
+func choose(trees []*Node) *Node {
+	serverInfo := NewServerInfo(trees)
 	serverInfo.Draw()
 	// 绘制之后，开始监听键盘
 	node := serverInfo.HandleKeyboard()
