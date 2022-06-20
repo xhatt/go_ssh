@@ -55,43 +55,42 @@ func genSSHConfig(node *Node) *defaultClient {
 	}
 
 	var authMethods []ssh.AuthMethod
-
-	var pemBytes []byte
-	if node.Key == "" {
-		pemBytes, err = ioutil.ReadFile(path.Join(u.HomeDir, ".ssh/id_rsa"))
-	} else {
-		if strings.HasPrefix(node.Key, "~") {
-			node.Key = path.Join(u.HomeDir, strings.Replace(node.Key, "~", "", 1))
-		}
-		_, err = os.Stat(node.Key)
-		if !os.IsNotExist(err) {
-			pemBytes, err = ioutil.ReadFile(node.Key)
+	password := node.password()
+	if password == nil {
+		var pemBytes []byte
+		if node.Key == "" {
+			pemBytes, err = ioutil.ReadFile(path.Join(u.HomeDir, ".ssh/id_rsa"))
 		} else {
-			pemBytes = []byte(node.Key)
-		}
-	}
-	if err != nil {
-		l.Error(err)
-		fmt.Println("未找到私钥文件或读取时失败")
-		os.Exit(1)
-	} else {
-		var signer ssh.Signer
-		if node.Passphrase != "" {
-			signer, err = ssh.ParsePrivateKeyWithPassphrase(pemBytes, []byte(node.Passphrase))
-		} else {
-			signer, err = ssh.ParsePrivateKey(pemBytes)
+			if strings.HasPrefix(node.Key, "~") {
+				node.Key = path.Join(u.HomeDir, strings.Replace(node.Key, "~", "", 1))
+			}
+			_, err = os.Stat(node.Key)
+			if !os.IsNotExist(err) {
+				pemBytes, err = ioutil.ReadFile(node.Key)
+			} else {
+				pemBytes = []byte(node.Key)
+			}
 		}
 		if err != nil {
 			l.Error(err)
+			fmt.Println("未配置密码饼干未找到私钥文件或读取时失败，无法连接到服务器")
+			os.Exit(1)
 		} else {
-			authMethods = append(authMethods, ssh.PublicKeys(signer))
+			var signer ssh.Signer
+			if node.Passphrase != "" {
+				signer, err = ssh.ParsePrivateKeyWithPassphrase(pemBytes, []byte(node.Passphrase))
+			} else {
+				signer, err = ssh.ParsePrivateKey(pemBytes)
+			}
+			if err != nil {
+				l.Error(err)
+			} else {
+				authMethods = append(authMethods, ssh.PublicKeys(signer))
+			}
 		}
-	}
-
-	password := node.password()
-
-	if password != nil {
+	} else {
 		authMethods = append(authMethods, password)
+
 	}
 
 	authMethods = append(authMethods, ssh.KeyboardInteractive(func(user, instruction string, questions []string, echos []bool) ([]string, error) {
