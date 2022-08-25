@@ -124,13 +124,26 @@ func Green(s string) string {
 	return ColorStr(s, 32)
 }
 
-func (n *Node) Str(selected bool) string {
-	s := "   %s. %s %s %s@%s\033[K"
+func (n *Node) Str(selected bool, showDetail bool) string {
+	s := "   %s. %s %s %s@%s%s\033[K"
 
 	if selected {
-		s = Yellow(fmt.Sprintf(s, n.ID, n.Name, ">", n.User, n.Host))
+		format := []interface{}{n.ID, n.Name, ">", n.User, n.Host}
+		if showDetail {
+
+			if n.Method == "密码" {
+				format = append(format, fmt.Sprintf("   密码：%s  端口：%d", n.Password, n.Port))
+			} else {
+				format = append(format, fmt.Sprintf("   端口：%d", n.Port))
+			}
+
+		} else {
+			format = append(format, "")
+		}
+		temp := fmt.Sprintf(s, format...)
+		s = Yellow(temp)
 	} else {
-		s = Faint(fmt.Sprintf(s, n.ID, n.Name, "|", n.User, n.Host))
+		s = Faint(fmt.Sprintf(s, n.ID, n.Name, "|", n.User, n.Host, ""))
 	}
 	return s
 }

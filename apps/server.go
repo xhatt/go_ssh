@@ -98,7 +98,7 @@ func initLength(trees []*Node) {
 }
 
 // getServers 将服务器信息打印出来
-func getServers(trees []*Node, i int) []string {
+func getServers(trees []*Node, i int, showDetail bool) []string {
 	var content []string
 	noResult := true
 	for index, item := range trees {
@@ -106,10 +106,10 @@ func getServers(trees []*Node, i int) []string {
 			content = append(content, ClearContent)
 		} else if index == i {
 			noResult = false
-			content = append(content, item.Str(true))
+			content = append(content, item.Str(true, showDetail))
 		} else {
 			noResult = false
-			content = append(content, item.Str(false))
+			content = append(content, item.Str(false, false))
 		}
 	}
 	if noResult && len(trees) != 0 {
@@ -126,7 +126,8 @@ type ServerInfo struct {
 	SearchContent string
 	searchContent string
 	Length        int
-	height        int // 内容的高度
+	height        int  // 内容的高度
+	showDetail    bool // 是否显示详情信息
 }
 
 // \033[0m 关闭所有属性
@@ -167,6 +168,10 @@ func MoveCursorRight(x int) {
 	// 往右移动光标
 	fmt.Printf("\033[%dC", x)
 }
+func MoveCursorHeadOfLine() {
+	// 移动光标至行首
+	fmt.Printf("\r")
+}
 func SaveCursor() {
 	fmt.Printf("\033[s")
 }
@@ -175,12 +180,21 @@ func RecoveryCursor() {
 	fmt.Printf("\033[u")
 
 }
+
+func matchNode(node *Node, content *string) bool {
+	// 搜索匹配
+	if strings.Contains(node.Name, *content) || strings.Contains(node.Host, *content) || strings.Contains(node.User, *content) {
+		return true
+	}
+	return false
+}
+
 func (s *ServerInfo) getTips() []string {
 	// 根据搜索内容匹配服务器信息
 	if len(s.SearchContent) != 0 && s.searchContent != s.SearchContent {
 		var nodes []*Node
 		for _, node := range s.nodes {
-			if strings.Contains(node.Name, s.SearchContent) || strings.Contains(node.Host, s.SearchContent) || strings.Contains(node.User, s.SearchContent) {
+			if matchNode(node, &s.SearchContent) {
 				nodes = append(nodes, node)
 			}
 		}
@@ -208,7 +222,7 @@ func (s *ServerInfo) getContent() []string {
 	// 获取本次要打印的内容
 	var content []string
 	content = append(content, s.getTips()...)
-	content = append(content, getServers(s.Nodes, s.CurrentIndex)...)
+	content = append(content, getServers(s.Nodes, s.CurrentIndex, s.showDetail)...)
 	return content
 }
 
@@ -218,7 +232,7 @@ func (s *ServerInfo) Draw() {
 	if height > s.height {
 		s.height = height
 	}
-	RecoveryCursor()
+	MoveCursorHeadOfLine()
 	for _, s := range content {
 		fmt.Println(s)
 	}
@@ -237,7 +251,7 @@ func NewServerInfo(trees []*Node) *ServerInfo {
 }
 
 func choose(trees []*Node) *Node {
-	SaveCursor()
+	//SaveCursor()
 	serverInfo := NewServerInfo(trees)
 	serverInfo.Draw()
 	// 绘制之后，开始监听键盘
@@ -321,6 +335,13 @@ func (s *ServerInfo) handleKey(key keyboard.Key) int {
 		} else {
 			s.CurrentIndex++
 		}
+	case keyboard.KeyArrowRight:
+		// 显示密码 端口 连接方式等信息
+		s.showDetail = true
+	case keyboard.KeyArrowLeft:
+		// 显示密码 端口 连接方式等信息
+		s.showDetail = false
+
 	case keyboard.KeyBackspace, keyboard.KeyBackspace2:
 		s.deleteSearchContent()
 	case keyboard.KeyEnter:
