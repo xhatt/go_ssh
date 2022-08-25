@@ -128,6 +128,7 @@ type ServerInfo struct {
 	Length        int
 	height        int  // 内容的高度
 	showDetail    bool // 是否显示详情信息
+
 }
 
 // \033[0m 关闭所有属性
@@ -183,7 +184,12 @@ func RecoveryCursor() {
 
 func matchNode(node *Node, content *string) bool {
 	// 搜索匹配
-	if strings.Contains(node.Name, *content) || strings.Contains(node.Host, *content) || strings.Contains(node.User, *content) {
+	temp := strings.ToLower(*content)
+	if strings.Contains(strings.ToLower(node.Name), temp) ||
+		strings.Contains(strings.ToLower(node.Host), temp) ||
+		strings.Contains(strings.ToLower(node.User), temp) ||
+		strings.Contains(node.pinyin, temp) ||
+		strings.Contains(node.firstPinyin, temp) {
 		return true
 	}
 	return false

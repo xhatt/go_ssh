@@ -2,6 +2,11 @@ package apps
 
 import (
 	"fmt"
+	"github.com/atrox/homedir"
+	"github.com/kevinburke/ssh_config"
+	"github.com/mozillazg/go-pinyin"
+	"golang.org/x/crypto/ssh"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -10,11 +15,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/atrox/homedir"
-	"github.com/kevinburke/ssh_config"
-	"golang.org/x/crypto/ssh"
-	"gopkg.in/yaml.v2"
 )
 
 type Node struct {
@@ -29,6 +29,8 @@ type Node struct {
 	ID            string
 	ChildrenCount int
 	Method        string // 鉴权方式
+	pinyin        string // 拼音
+	firstPinyin   string // 首字母拼音
 }
 
 type CallbackShell struct {
@@ -73,6 +75,17 @@ func GetConfig() []*Node {
 	return config
 }
 
+func getPinyin(style *pinyin.Args, hans string) (string, string) {
+	p := pinyin.Pinyin(hans, *style)
+	pinyinStr := ""
+	pinyinFirst := ""
+	for _, item := range p {
+		pinyinStr += item[0]
+		pinyinFirst += string(item[0][0])
+	}
+	return pinyinStr, pinyinFirst
+}
+
 // 添加编号 处理数据
 func HandleNode(c []*Node) []*Node {
 	var temp []*Node
@@ -83,7 +96,7 @@ func HandleNode(c []*Node) []*Node {
 		}
 		temp = append(temp, item)
 	}
-
+	pinyinStyle := pinyin.NewArgs()
 	for index, item := range temp {
 		item.ID = fmt.Sprintf("%d", index+1)
 		if item.Password != "" {
@@ -104,6 +117,10 @@ func HandleNode(c []*Node) []*Node {
 		if item.User == "" {
 			item.User = "root"
 		}
+		// 服务器名转pinyin 为了搜索
+		//fmt.Println()
+		//item.pinyin = pinyin.Pinyin(item.Name, pinyinStyle)
+		item.pinyin, item.firstPinyin = getPinyin(&pinyinStyle, item.Name)
 	}
 	return temp
 }
